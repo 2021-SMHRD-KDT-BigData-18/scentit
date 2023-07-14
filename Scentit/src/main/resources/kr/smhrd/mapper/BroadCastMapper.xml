@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="kr.smhrd.mapper.BroadCastMapper">
+
+	<!-- 1) 남/여/전체 시청률 평균을 조회하는 기능 -->
+	<select id="getRating" resultType="kr.smhrd.entity.BroadCast" parameterType="kr.smhrd.entity.SearchCriteria">
+		select
+		program_nm,
+		round(avg(male_rt),3) as male_rt,
+		round(avg(female_rt),3) as female_rt,
+		round(avg(wtchng_rt),3) as wtchng_rt
+		from broadcast
+		<include refid="searchOption"/>
+		group by program_nm 
+	</select>
+	<!-- 프로그램명으로 검색하면 
+		 where program_nm like '%?%'
+		 MC이름으로 검색하면
+		 where fixing_cast_nm like '%?%'
+		 초기 시작 (검색을 하지 않았을 때)
+		 where program_nm = '뮤직뱅크' -->
+	<!-- 매개변수 : SearchCriteria(type, content)
+		 type이 프로그램명인지, MC이름인지, null인지
+		 SQL구문이 동적으로 변경 -->
+		 
+		 <sql id="searchOption">
+		 	<if test="type == null">
+			 	where program_nm = '뮤직뱅크'
+		 	</if>
+		 	<if test="type == '방송제목'">
+		 		where program_nm like concat('%',#{content},'%')
+		 	</if>
+		 	<if test="type == 'MC이름'">
+		 		where fixing_cast_nm like concat('%',#{content},'%')
+		 	</if>
+		 </sql>
+		 
+		 
+	<!-- DB에서 조회해 온 결과값의 column과 객체의 필드명이 서로 달랐을 때 사용할 수 있는
+		 resultMap -->
+	<!-- id : resultMap의 이름(변수명)을 정하는 attribute
+		 type : 내가 표현하고 싶은 객체(자료형) -->
+	<resultMap type="kr.smhrd.entity.BroadCast" id="monthData">
+		<!-- column : 조회한 column 명칭 / property : 객체의 필드명 -->
+		<result column="DE" property="brdcst_de" />
+		<result column="RT" property="wtchng_rt" />
+	</resultMap>
+
+	<!-- 2) 월별 전체시청률 평균 조회할 수 있는 기능 -->
+	<select id="getMonthData" resultMap="monthData" parameterType="java.lang.String">
+		select month(brdcst_de) as DE,
+			   round(avg(wtchng_rt),3) as RT
+		from broadcast
+		where program_nm = #{program_nm}
+		group by DE
+	</select>
+	
+	<!-- 3) 연령대별 시청률 평균 조회할 수 있는 기능 -->
+	<select id="getAgeData" resultType="kr.smhrd.entity.BroadCast" parameterType="java.lang.String">
+		select round(avg(n10s_rt),3) as n10s_rt,
+			   round(avg(n20s_rt),3) as n20s_rt,
+			   round(avg(n30s_rt),3) as n30s_rt,
+			   round(avg(n40s_rt),3) as n40s_rt,
+			   round(avg(n50s_rt),3) as n50s_rt,
+			   round(avg(n60s_above_rt),3) as n60s_above_rt
+			   from broadcast
+			   where program_nm = #{program_nm}
+	</select>
+
+	<!-- 4) 출연진 TOP5 조회하는 메소드
+	<select id="getCastCount" resultType="kr.smhrd.entity.BroadCast">
+		SELECT FIXING_CAST_NM, CAST_NM
+		FROM COM.BROADCAST
+		where program_nm = '뮤직뱅크'
+	</select> -->
+
+</mapper>
